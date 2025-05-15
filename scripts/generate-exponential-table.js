@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 /**
- * Generate (or overwrite) a Markdown file that shows powers of `base`
- * up to `limit`, in a tidy table.  Intended to run in CI, but you can
- * run it locally too:
+ * Generate (or overwrite) a Markdown file that shows how petition
+ * signatures can double daily, starting from an initial count and
+ * capped at the current world-population limit.
  *
- *   node scripts/generate-exponential-table.js \
- *        --file docs/exponential-growth.md --base 3 --limit 12
+ *   node scripts/generate-exponential-table.js --initial 41
  *
- * All CLI flags are optional; sensible defaults are provided.
+ * Only one CLI flag is accepted:
+ *   --initial   Starting number of signatures (default = 41)
  *
  * K – May 2025
  */
 
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 
-// ─── Simple flag parsing without deps ──────────────────────────────────────────
+// ─── Parse CLI flags (no deps) ────────────────────────────────────────────────
 const flags = {};
 process.argv.slice(2).forEach((arg, i, arr) => {
   if (!arg.startsWith('--')) return;
@@ -24,22 +24,36 @@ process.argv.slice(2).forEach((arg, i, arr) => {
   flags[key] = val;
 });
 
-const targetFile = flags.file  || 'docs/exponential-growth.md';
-const base       = +flags.base || 2;
-const limit      = +flags.limit || 10;
-const heading    = flags.heading || '# Exponential Growth';
+// ─── Constants ───────────────────────────────────────────────────────────────
+const TARGET_FILE = 'docs/people-reach-growth.md';
+const HEADING     = '# People Reach Growth';
+const DOUBLINGS   = 30;                 // ≈ one month of daily doubling
+const POP_LIMIT   = 8_223_141_035;     // world population (May 2025)
+const BASE        = 2;
 
-const rows = [`| n | ${base}<sup>n</sup> |`, '|---|---|'];
-for (let n = 0; n <= limit; n++) {
-  rows.push(`| ${n} | ${base ** n} |`);
+const initial = +flags.initial || 41;  // starting signatures
+
+// ─── Build the markdown table ────────────────────────────────────────────────
+const rows = [
+  '| Day | Signatures |',
+  '|----:|-----------:|',
+];
+
+for (let d = 0; d <= DOUBLINGS; d++) {
+  let value = initial * BASE ** d;
+  if (value >= POP_LIMIT) {
+    rows.push(`| ${d} | ${POP_LIMIT} *(population limit)* |`);
+    break;                          // further rows would not change
+  }
+  rows.push(`| ${d} | ${value} |`);
 }
 
-const content = `${heading}
+const content = `${HEADING}
 
 ${rows.join('\n')}\n`;
 
-// Ensure parent dir exists (useful for fresh clones)
-fs.mkdirSync(path.dirname(targetFile), { recursive: true });
-fs.writeFileSync(targetFile, content);
+// ─── Write the file ──────────────────────────────────────────────────────────
+fs.mkdirSync(path.dirname(TARGET_FILE), { recursive: true });
+fs.writeFileSync(TARGET_FILE, content);
 
-console.log(`✅  Wrote ${path.relative(process.cwd(), targetFile)}`);
+console.log(`✅  Wrote ${path.relative(process.cwd(), TARGET_FILE)}`);
