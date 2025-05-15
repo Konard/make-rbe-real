@@ -1,0 +1,64 @@
+name: Update exponential-growth table
+
+on:
+  # Manual trigger in the Actions tab → “Run workflow”
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Base (integer ≥ 2)"
+        required: false
+        default: "2"
+      limit:
+        description: "Highest power n"
+        required: false
+        default: "10"
+      file:
+        description: "Target .md path"
+        required: false
+        default: "docs/exponential-growth.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # allows committing back to the repo
+
+    steps:
+      - name: 🛎️ Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # keep history so git can commit
+
+      - name: 🗂️ Set Git author
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: ⚙️ Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Yarn is here because you prefer it, even though no deps are needed
+      - name: 📦 Install (empty) deps
+        run: yarn --frozen-lockfile || true   # succeeds even w/o lockfile
+
+      - name: 📝 Generate table
+        run: |
+          chmod +x scripts/generate-exponential-table.js
+          node scripts/generate-exponential-table.js \
+            --file  "${{ github.event.inputs.file || 'docs/exponential-growth.md' }}" \
+            --base  "${{ github.event.inputs.base || '2' }}" \
+            --limit "${{ github.event.inputs.limit || '10' }}"
+
+      - name: 📤 Commit & push if changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes—nothing to commit."
+          else
+            git add ${{ github.event.inputs.file || 'docs/exponential-growth.md' }}
+            git commit -m "chore: update exponential-growth table 🌱"
+            git push "https://${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD
+          fi
