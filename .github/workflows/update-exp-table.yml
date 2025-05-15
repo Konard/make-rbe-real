@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # allow committing back to the repo
+      contents: write     # allows committing back to the repo
 
     steps:
       - name: 🛎️ Check out repo
@@ -43,10 +43,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git diff --quiet; then
+          # Stage the file first—this makes git diff pick up brand-new files
+          git add docs/people-reach-growth.md
+
+          # If nothing is staged, exit quietly; otherwise commit & push
+          if git diff --cached --quiet; then
             echo "No changes—nothing to commit."
           else
-            git add docs/people-reach-growth.md
             git commit -m "chore: update people-reach-growth table 🌍"
             git push "https://${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD
           fi
